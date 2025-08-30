@@ -11,7 +11,6 @@ import authRoutes from './routes/auth.route.js';
 import { app, server } from './lib/socket.js';
 
 dotenv.config();
-app
 
 const PORT = process.env.PORT;
 const __dirname = path.resolve()
