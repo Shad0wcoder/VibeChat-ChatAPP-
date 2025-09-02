@@ -4,19 +4,17 @@ import {
   getMessages, 
   getUsersForSidebar, 
   sendMessage, 
-  markMessagesRead,      // add this
-  getUnreadCounts        // add this
+  markMessagesRead,
+  getUnreadCounts
 } from '../controllers/message.controller.js';
 
 const router = express.Router();
 
-// Existing routes
+// Always put fixed routes first
 router.get("/users", protectedRoute, getUsersForSidebar);
-router.get("/:id", protectedRoute, getMessages);
+router.get("/unreadCounts", protectedRoute, getUnreadCounts);   // ✅ move up
+router.post("/markRead/:id", protectedRoute, markMessagesRead); // ✅ before :id
+router.get("/:id", protectedRoute, getMessages);                // keep last
 router.post("/send/:id", protectedRoute, sendMessage);
-
-// New routes
-router.post("/markRead/:id", protectedRoute, markMessagesRead);
-router.get("/unreadCounts", protectedRoute, getUnreadCounts);
 
 export default router;

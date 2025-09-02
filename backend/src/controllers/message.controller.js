@@ -55,8 +55,9 @@ export const sendMessage = async (req, res) => {
 
         await newMessage.save();
 
-        const receiverSocketId = getReceiverSocketId(receiverId)
+        const receiverSocketId = getReceiverSocketId(receiverId);
         if (receiverSocketId) {
+            io.to(receiverSocketId).emit("newMessage", newMessage);
             const unreadCount = await Message.countDocuments({ senderId, receiverId, read: false });
             io.to(receiverSocketId).emit("messageCountUpdate", { userId: senderId, count: unreadCount });
         }
@@ -66,9 +67,9 @@ export const sendMessage = async (req, res) => {
     } catch (error) {
         console.log("Error in sendMessage:", error.message);
         res.status(500).json({ message: "Internal server error" });
-
     }
-}
+};
+
 
 export const getUnreadCounts = async (req, res) => {
     try {
@@ -95,16 +96,26 @@ export const getUnreadCounts = async (req, res) => {
 export const markMessagesRead = async (req, res) => {
     try {
         const myId = req.user._id;
-        const { userId } = req.params; // the user whose messages are being read
+        const { id: userId } = req.params; // the other user
 
         await Message.updateMany(
             { senderId: userId, receiverId: myId, read: false },
             { $set: { read: true } }
         );
 
+        // 🔔 Get updated unread count for sender
+        const unreadCount = await Message.countDocuments({ senderId: userId, receiverId: myId, read: false });
+
+        // 🔔 Notify the sender in real time
+        const senderSocketId = getReceiverSocketId(userId);
+        if (senderSocketId) {
+            io.to(senderSocketId).emit("messageCountUpdate", { userId: myId, count: unreadCount });
+        }
+
         res.status(200).json({ success: true });
     } catch (error) {
-        console.error(error);
+        console.error("Error in markMessagesRead:", error.message);
         res.status(500).json({ message: "Internal server error" });
     }
 };
+

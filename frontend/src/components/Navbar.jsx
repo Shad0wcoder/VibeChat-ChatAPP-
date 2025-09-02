@@ -12,10 +12,9 @@ const Navbar = () => {
         <div className='flex items-center justify-between h-full'>
           <div className='flex items-center gap-8'>
             <Link to='/' className='flex items-center gap-2.5 hover:opacity-80 transition-all'>
-              <div className='w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center'>
-                <MessageSquare className='size-5 text-primary' />
+              <div className='w-[110px] rounded-lg bg-primary/10 flex items-center justify-center'>
+                <img src="/logo2.png" alt="logo" className='rounded-lg'/>
               </div>
-              <h1 className='text-lg font-bold'>VibeChat</h1>
             </Link>
           </div>
 

@@ -3,17 +3,29 @@ import { useChatStore } from "../store/useChatStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { User } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
-import { socket } from "../lib/socket"; // import your socket client
 
 const Sidebar = () => {
   const { getUsers, users, selectedUser, setSelectedUser, isUserLoading } = useChatStore();
-  const { onlineUsers, authUser} = useAuthStore();
+  const { onlineUsers, authUser, socket } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
-  const [messageCounts, setMessageCounts] = useState({}); // store { userId: unreadCount }
-  const token = authUser?.token;
-  const url = "http://localhost:5001"
-  console.log("Token:", token);
+  const [messageCounts, setMessageCounts] = useState({});
+  const url = "http://localhost:5001";
 
+  // 🚨 If user is not logged in
+  if (!authUser) {
+    return (
+      <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex items-center justify-center text-zinc-500">
+        <p className="text-center px-3">Login to see your contacts</p>
+      </aside>
+    );
+  }
+
+  // Register socket for this user
+  useEffect(() => {
+    if (authUser?._id) {
+      socket.emit("registerUser", authUser._id);
+    }
+  }, [authUser]);
 
   // Fetch users
   useEffect(() => {
@@ -25,51 +37,74 @@ const Sidebar = () => {
     const fetchUnreadCounts = async () => {
       try {
         const res = await fetch(`${url}/api/messages/unreadCounts`, {
-          headers: { Authorization: `Bearer ${token}` },
+          method: "GET",
+          credentials: "include",
         });
-        const data = await res.json(); // { userId: count }
+        const data = await res.json();
         setMessageCounts(data);
       } catch (error) {
         console.error(error);
       }
     };
-    if (token) fetchUnreadCounts();
-  }, [token]);
-
-  // Listen for real-time updates from socket
-  useEffect(() => {
-    socket.on("messageCountUpdate", ({ userId, count }) => {
-      setMessageCounts((prev) => ({ ...prev, [userId]: count }));
-    });
-
-    return () => socket.off("messageCountUpdate");
+    fetchUnreadCounts();
   }, []);
 
-  // When user clicks on a contact
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const audio = new Audio("/sounds/notific.mp3");
+
+    const handleNewMessage = (message) => {
+      // Only play sound if the message is from someone else
+      if (message.senderId !== authUser._id) {
+        audio.play().catch(err => console.log(err));
+      }
+
+      // Optional: also update unread count
+      setMessageCounts(prev => ({
+        ...prev,
+        [message.senderId]: selectedUser?._id === message.senderId ? 0 : (prev[message.senderId] || 0) + 1
+      }));
+    };
+
+    socket.on("newMessage", handleNewMessage);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+    };
+  }, [socket, authUser, selectedUser]);
+
+
+
+
+  // Handle selecting a user
   const handleSelectUser = async (user) => {
     setSelectedUser(user);
+
+    // Optimistically reset unread count
+    setMessageCounts(prev => ({ ...prev, [user._id]: 0 }));
 
     // Mark messages as read in backend
     try {
       await fetch(`${url}/api/messages/markRead/${user._id}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
-      // Reset unread count locally
-      setMessageCounts((prev) => ({ ...prev, [user._id]: 0 }));
     } catch (error) {
       console.error(error);
     }
   };
 
   const filteredUsers = showOnlineOnly
-    ? users.filter((user) => onlineUsers.includes(user._id))
+    ? users.filter(user => onlineUsers.includes(user._id))
     : users;
 
   if (isUserLoading) return <SidebarSkeleton />;
 
   return (
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
+      {/* Header */}
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center gap-2">
           <User className="w-6 h-6" />
@@ -81,7 +116,7 @@ const Sidebar = () => {
             <input
               type="checkbox"
               checked={showOnlineOnly}
-              onChange={(e) => setShowOnlineOnly(e.target.checked)}
+              onChange={e => setShowOnlineOnly(e.target.checked)}
               className="checkbox checkbox-sm"
             />
             <span className="text-sm">Show online only</span>
@@ -90,30 +125,34 @@ const Sidebar = () => {
         </div>
       </div>
 
+      {/* User list */}
       <div className="overflow-y-auto w-full py-3">
-        {filteredUsers.map((user) => (
+        {filteredUsers.map(user => (
           <div
             key={user._id}
-            className={`w-full p-3 flex items-center gap-3 cursor-pointer hover:bg-base-200 ${
-              selectedUser?._id === user._id ? "bg-base-200" : ""
-            }`}
+            className={`w-full p-3 flex items-center gap-3 cursor-pointer hover:bg-base-200 ${selectedUser?._id === user._id ? "bg-base-200" : ""
+              }`}
             onClick={() => handleSelectUser(user)}
           >
             <div className="relative mx-auto lg:mx-0">
               <img
                 src={user.profilePic || "/avatar.png"}
-                alt={user.name}
+                alt={user.fullName}
                 className="size-12 rounded-full object-cover"
               />
               {onlineUsers.includes(user._id) && (
                 <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 ring-2 ring-zinc-900 rounded-full" />
+              )}
+              {messageCounts[user._id] > 0 && (
+                <span className="hidden sm:absolute top-0 right-0 w-[20px] h-4 bg-blue-500 text-center text-white text-xs rounded-full">
+                  {messageCounts[user._id]}
+                </span>
               )}
             </div>
 
             <div className="hidden lg:block text-left min-w-0 flex-1">
               <div className="flex justify-between items-center">
                 <div className="font-medium truncate">{user.fullName}</div>
-                {/* Unread message count badge */}
                 {messageCounts[user._id] > 0 && (
                   <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
                     {messageCounts[user._id]}
