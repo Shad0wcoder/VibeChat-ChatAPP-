@@ -10,11 +10,10 @@ import {
 
 const router = express.Router();
 
-// Always put fixed routes first
 router.get("/users", protectedRoute, getUsersForSidebar);
-router.get("/unreadCounts", protectedRoute, getUnreadCounts);   // ✅ move up
-router.post("/markRead/:id", protectedRoute, markMessagesRead); // ✅ before :id
-router.get("/:id", protectedRoute, getMessages);                // keep last
+router.get("/unreadCounts", protectedRoute, getUnreadCounts);
+router.post("/markRead/:id", protectedRoute, markMessagesRead);
+router.get("/:id", protectedRoute, getMessages);
 router.post("/send/:id", protectedRoute, sendMessage);
 
 export default router;
