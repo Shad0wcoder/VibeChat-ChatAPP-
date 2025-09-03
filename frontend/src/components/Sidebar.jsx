@@ -9,9 +9,8 @@ const Sidebar = () => {
   const { onlineUsers, authUser, socket } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [messageCounts, setMessageCounts] = useState({});
-  const url = "http://localhost:5001";
+  const BASE_URL = import.meta.env.VITE_API_URL;
 
-  // 🚨 If user is not logged in
   if (!authUser) {
     return (
       <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex items-center justify-center text-zinc-500">
@@ -20,23 +19,20 @@ const Sidebar = () => {
     );
   }
 
-  // Register socket for this user
   useEffect(() => {
     if (authUser?._id) {
       socket.emit("registerUser", authUser._id);
     }
   }, [authUser]);
 
-  // Fetch users
   useEffect(() => {
     getUsers();
   }, [getUsers]);
 
-  // Fetch initial unread counts
   useEffect(() => {
     const fetchUnreadCounts = async () => {
       try {
-        const res = await fetch(`${url}/api/messages/unreadCounts`, {
+        const res = await fetch(`${url}/messages/unreadCounts`, {
           method: "GET",
           credentials: "include",
         });
@@ -49,19 +45,17 @@ const Sidebar = () => {
     fetchUnreadCounts();
   }, []);
 
-  // Listen for real-time updates
   useEffect(() => {
     if (!socket) return;
 
     const audio = new Audio("/sounds/notific.mp3");
 
     const handleNewMessage = (message) => {
-      // Only play sound if the message is from someone else
+
       if (message.senderId !== authUser._id) {
         audio.play().catch(err => console.log(err));
       }
 
-      // Optional: also update unread count
       setMessageCounts(prev => ({
         ...prev,
         [message.senderId]: selectedUser?._id === message.senderId ? 0 : (prev[message.senderId] || 0) + 1
@@ -78,16 +72,13 @@ const Sidebar = () => {
 
 
 
-  // Handle selecting a user
   const handleSelectUser = async (user) => {
     setSelectedUser(user);
 
-    // Optimistically reset unread count
     setMessageCounts(prev => ({ ...prev, [user._id]: 0 }));
 
-    // Mark messages as read in backend
     try {
-      await fetch(`${url}/api/messages/markRead/${user._id}`, {
+      await fetch(`${url}/messages/markRead/${user._id}`, {
         method: "POST",
         credentials: "include",
       });
