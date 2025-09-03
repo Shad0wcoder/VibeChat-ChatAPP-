@@ -29,14 +29,6 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-  // ✅ Catch-all route that works in Express v5
-  app.get(/.*/, (req, res) => {
-    res.sendFile(path.resolve(__dirname, "../frontend/dist/index.html"));
-  });
-}
 
 server.listen(PORT, () => {
   console.log("server is running on PORT:" + PORT);
