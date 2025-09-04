@@ -61,8 +61,8 @@ export const useAuthStore = create((set, get) => ({
     logout: async () => {
         try {
             await axiosInstance.post('/auth/logout');
-            set({ authUser: null });
             get.disconnectSocket();
+            set({ authUser: null });
             toast.success("Logged out successfully");
 
         } catch (error) {
@@ -91,7 +91,7 @@ export const useAuthStore = create((set, get) => ({
         const socket = io(SOCKET_URL, {
             query: {
                 userId: authUser._id,
-                transports: ["websocket"],
+                transports: ["websocket", "polling"],
             }
         })
         socket.connect()
