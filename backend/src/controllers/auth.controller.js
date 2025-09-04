@@ -77,7 +77,8 @@ export const logout = (req, res) => {
     try {
         res.clearCookie("jwt", {
             httpOnly: true,
-            sameSite: "none",
+            sameSite: "none",          // same as in generateToken
+            secure: process.env.NODE_ENV === 'production', 
         });
         res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
@@ -85,6 +86,7 @@ export const logout = (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 }
+
 
 
 export const updateProfile = async (req, res) => {
