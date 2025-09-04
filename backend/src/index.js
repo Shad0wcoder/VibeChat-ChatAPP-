@@ -26,7 +26,13 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-server.listen(PORT, () => {
-  console.log("Server running on PORT:" + PORT);
-  connectDB();
-});
+connectDB()
+  .then(() => {
+    server.listen(PORT, () => {
+      console.log("✅ Server running on PORT:" + PORT);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection failed:", err.message);
+    process.exit(1);
+  });
